@@ -19,12 +19,11 @@ def smooth(y):
 
 # append `num` NaN rows to Series
 def append_nan(y, num):
-	print("y: " + str(y) + ", num: " + str(num))
 	missing_elements = pd.Series([np.nan for i in range(num)])
 	return y.append(missing_elements, ignore_index=True)
 
 # format Series for comparison
-# 1. Smooth out series
+# 1. Smooth out series for presentation purposes
 # 2. Ensure the same dimensionality (same number of rows)
 def format_series(y1, y2):
 	y1 = pd.Series(smooth(y1))
@@ -38,32 +37,44 @@ def format_series(y1, y2):
 		y1 = append_nan(y1, difference)
 	return y1, y2
 
-kafka240 = pd.read_csv('data-kafka240.csv')
-kafka231 = pd.read_csv('data-kafka231.csv')
+seriesFormatArgs23 = {'color':'green', 'linewidth':1, 'label':'2.3.1'}
+seriesFormatArgs24 = {'color':'blue', 'linewidth':1, 'label':'2.4.0'}
+
+# skip footer, summary line
+kafka24 = pd.read_csv('data-kafka240.csv', skipfooter=1)
+kafka23 = pd.read_csv('data-kafka231.csv', skipfooter=1)
 
 # must use the `time-ms` of the longer field
 # test run before pre-fetch fix will always take longer, so use 2.3.1 results for x axis
-x = kafka231['time-ms']
+x = kafka23['time-ms']
 
 # Broker to Consumer Network Traffic
 
 plt.title('Broker to Consumer Network Traffic')
 
-metric_name = 'broker:kafka.server:type=BrokerTopicMetrics-name=BytesOutPerSec'
+metric_name = 'broker:kafka.server:type=BrokerTopicMetrics:name=BytesOutPerSec'
 
-y240, y231 = format_series(kafka240[metric_name], kafka231[metric_name])
+y24, y23 = format_series(kafka24[metric_name], kafka23[metric_name])
+
+one_mb = 1000 * 1000
+
+# scale bytes to MB
+y24 /= one_mb
+y23 /= one_mb
 
 # Add x and y lables, and set their font size
 plt.xlabel("time (ms)", fontsize=14)
-plt.ylabel("broker bytes out (KB)", fontsize=14)
+plt.ylabel("broker bytes out (MB)", fontsize=14)
 
-plt.plot(x, y240, color='blue', linewidth=1, label='2.4.0')
-plt.plot(x, y231, color='green', linewidth=1, label='2.3.1')
-
-# print(smooth(y231))
+plt.plot(x, y24, **seriesFormatArgs24)
+plt.plot(x, y23, **seriesFormatArgs23)
 
 plt.grid()
 plt.legend()
+plt.savefig("plots/broker-to-consumer-network-traffic.png")
+
+# 
+
 plt.show()
 
-#print(kafka240)
+
