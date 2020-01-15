@@ -1,11 +1,10 @@
 # python API refs
 # --
-# matplotlib.pyplot.plot 	https://matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html#matplotlib.pyplot.plot
-# pd.read_csv				https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html?highlight=read_csv#pandas.read_csv
-# pd.Series      			https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.append.html
-# pd.DataFrame				https://pandas.pydata.org/pandas-docs/stable/reference/frame.html
-
-
+# matplotlib.pyplot.plot 		https://matplotlib.org/api/_as_gen/matplotlib.pyplot.plot.html#matplotlib.pyplot.plot
+# matploglib.pyplot.subplots	https://matplotlib.org/api/_as_gen/matplotlib.pyplot.subplots.html
+# pd.read_csv					https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html?highlight=read_csv#pandas.read_csv
+# pd.Series      				https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.append.html
+# pd.DataFrame					https://pandas.pydata.org/pandas-docs/stable/reference/frame.html
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np 
@@ -55,20 +54,31 @@ plt.title('Broker to Consumer Network Traffic')
 
 metric_name = 'broker:kafka.server:type=BrokerTopicMetrics:name=BytesOutPerSec'
 
-y24, y23 = format_series(kafka24[metric_name], kafka23[metric_name])
+y24Raw, y23Raw = (kafka24[metric_name], kafka23[metric_name])
+y24, y23 = format_series(y24Raw, y23Raw)
 
-one_mb = 1000 * 1000
+one_gb = 1000 * 1000 * 1000
 
 # scale bytes to MB
-y24 /= one_mb
-y23 /= one_mb
+y24 /= one_gb
+y23 /= one_gb
 
 # Add x and y lables, and set their font size
 plt.xlabel("time (ms)", fontsize=14)
-plt.ylabel("broker bytes out (MB)", fontsize=14)
+plt.ylabel("broker bytes out (GB)", fontsize=14)
 
 plt.plot(x, y24, **seriesFormatArgs24)
 plt.plot(x, y23, **seriesFormatArgs23)
+
+# Add annotated points for summary
+lastY24Index = len(y24Raw)-1
+xAnnotate, y24Annotate = (x.at[lastY24Index], (y24Raw.at[lastY24Index]/one_gb))
+y23Annotate = y23Raw.at[lastY24Index]/one_gb
+
+plt.annotate(s=" y=" + format(y24Annotate, ".3") + " GB", xy=(xAnnotate, y24Annotate), fontsize=7)
+plt.annotate(s=" y=" + format(y23Annotate, ".3") + " GB", xy=(xAnnotate, y23Annotate), fontsize=7)
+plt.plot(xAnnotate, y24Annotate, marker=".", color="black")
+plt.plot(xAnnotate, y23Annotate+0.03, marker=".", color="black") # fudge y value to be on smoothed line, keep actual annotated value the same
 
 plt.grid()
 plt.legend()
@@ -81,6 +91,7 @@ plt.title('Consumer Record Throughput')
 
 metric_name = 'kafka-consumer:records-consumed-total'
 
+y24Raw, y23Raw = (kafka24[metric_name], kafka23[metric_name])
 y24, y23 = format_series(kafka24[metric_name], kafka23[metric_name])
 
 thousand = 1000
@@ -91,36 +102,20 @@ y23 /= thousand
 
 # Add x and y lables, and set their font size
 plt.xlabel("time (ms)", fontsize=14)
-plt.ylabel("consumed records (x1000)", fontsize=14)
+plt.ylabel("consumed records (1000x)", fontsize=14)
 
 plt.plot(x, y24, **seriesFormatArgs24)
 plt.plot(x, y23, **seriesFormatArgs23)
 
-plt.grid()
-plt.legend()
-plt.savefig("plots/consumer-record-throughput.png")
+# Add annotated points for summary
+lastY24Index = len(y24Raw)-1
+xAnnotate, y24Annotate = (x.at[lastY24Index], (y24Raw.at[lastY24Index]/thousand))
+y23Annotate = y23Raw.at[lastY24Index]/thousand
 
-# Consumer Record Throughput
-
-plt.figure(2)
-plt.title('Consumer Record Throughput')
-
-metric_name = 'kafka-consumer:records-consumed-total'
-
-y24, y23 = format_series(kafka24[metric_name], kafka23[metric_name])
-
-thousand = 1000
-
-# scale thousands of records
-y24 /= thousand
-y23 /= thousand
-
-# Add x and y lables, and set their font size
-plt.xlabel("time (ms)", fontsize=14)
-plt.ylabel("consumed records (x1000)", fontsize=14)
-
-plt.plot(x, y24, **seriesFormatArgs24)
-plt.plot(x, y23, **seriesFormatArgs23)
+plt.annotate(s=" y=" + format(y24Annotate*thousand, ".0f") + " rec", xy=(xAnnotate, y24Annotate), fontsize=7)
+plt.annotate(s=" y=" + format(y23Annotate*thousand, ".0f") + " rec", xy=(xAnnotate, y23Annotate), fontsize=7)
+plt.plot(xAnnotate, y24Annotate-3, marker=".", color="black") # fudge y value to be on smoothed line, keep actual annotated value the same
+plt.plot(xAnnotate, y23Annotate+7, marker=".", color="black") # fudge y value to be on smoothed line, keep actual annotated value the same
 
 plt.grid()
 plt.legend()
@@ -142,6 +137,8 @@ ax_heap.set_title('JVM Heap Memory Usage')
 ax_heap.set_ylabel("bytes used (MB)", fontsize=14)
 
 y24, y23 = format_series(kafka24[metric_jvm_heap_bytes], kafka23[metric_jvm_heap_bytes])
+
+one_mb = 1000 * 1000
 
 # scale bytes to MB
 y24 /= one_mb
@@ -199,10 +196,21 @@ ax_fetch_total.set_title('Fetch Requests')
 ax_fetch_total.set_ylabel("fetch requests", fontsize=14)
 ax_fetch_total.set_xlabel('time (ms)', fontsize=14)
 
-y24, y23 = format_series(kafka24[metric_fetch_total], kafka23[metric_fetch_total])
+y24Raw, y23Raw = (kafka24[metric_fetch_total], kafka23[metric_fetch_total])
+y24, y23 = format_series(y24Raw, y23Raw)
 
 ax_fetch_total.plot(x, y24, **seriesFormatArgs24)
 ax_fetch_total.plot(x, y23, **seriesFormatArgs23)
+
+# Add annotated points for summary
+lastY24Index = len(y24Raw)-1
+xAnnotate, y24Annotate = (x.at[lastY24Index], (y24Raw.at[lastY24Index]))
+y23Annotate = y23Raw.at[lastY24Index]
+
+ax_fetch_total.annotate(s=" y=" + format(y24Annotate, ".0f") + " req", xy=(xAnnotate, y24Annotate), fontsize=7)
+ax_fetch_total.annotate(s=" y=" + format(y23Annotate, ".0f") + " req", xy=(xAnnotate, y23Annotate), fontsize=7)
+ax_fetch_total.plot(xAnnotate, y24Annotate, marker=".", color="black") # fudge y value to be on smoothed line, keep actual annotated value the same
+ax_fetch_total.plot(xAnnotate, y23Annotate, marker=".", color="black") # fudge y value to be on smoothed line, keep actual annotated value the same
 
 ax_fetch_total.grid()
 ax_fetch_total.legend()
@@ -215,19 +223,19 @@ ax_records_per_fetch_avg.set_xlabel('time (ms)', fontsize=14)
 
 # first n records are NaN
 # remove first NaN records, format the axis, then re-add NaN when plotting
-y24 = kafka24[metric_records_per_fetch_avg]
+y24Raw = kafka24[metric_records_per_fetch_avg]
 
-total_size = len(y24)
-non_nan_size = y24.count()
-y24_head = y24.head(total_size-non_nan_size)
-y24 = y24.tail(non_nan_size)
+total_size = len(y24Raw)
+non_nan_size = y24Raw.count()
+y24_head = y24Raw.head(total_size-non_nan_size)
+y24 = y24Raw.tail(non_nan_size)
 
-y23 = kafka23[metric_records_per_fetch_avg]
+y23Raw = kafka23[metric_records_per_fetch_avg]
 
-total_size = len(y23)
-non_nan_size = y23.count()
-y23_head = y23.head(total_size-non_nan_size)
-y23 = y23.tail(non_nan_size)
+total_size = len(y23Raw)
+non_nan_size = y23Raw.count()
+y23_head = y23Raw.head(total_size-non_nan_size)
+y23 = y23Raw.tail(non_nan_size)
 
 y24, y23 = format_series(y24, y23)
 
@@ -239,6 +247,16 @@ y24 = y24.head(len(y24)-(len(y24)-len(y23)))
 
 ax_records_per_fetch_avg.plot(x, y24, **seriesFormatArgs24)
 ax_records_per_fetch_avg.plot(x, y23, **seriesFormatArgs23)
+
+# Add annotated points for summary
+lastY24Index = len(y24Raw)-1
+xAnnotate, y24Annotate = (x.at[lastY24Index], (y24Raw.at[lastY24Index]))
+y23Annotate = y23Raw.at[lastY24Index]
+
+ax_records_per_fetch_avg.annotate(s=" y=" + format(y24Annotate, ".0f") + " rec", xy=(xAnnotate, y24Annotate), fontsize=7)
+ax_records_per_fetch_avg.annotate(s=" y=" + format(y23Annotate, ".0f") + " rec", xy=(xAnnotate, y23Annotate), fontsize=7)
+ax_records_per_fetch_avg.plot(xAnnotate, y24Annotate, marker=".", color="black") # fudge y value to be on smoothed line, keep actual annotated value the same
+ax_records_per_fetch_avg.plot(xAnnotate, y23Annotate, marker=".", color="black") # fudge y value to be on smoothed line, keep actual annotated value the same
 
 ax_records_per_fetch_avg.grid()
 ax_records_per_fetch_avg.legend()
